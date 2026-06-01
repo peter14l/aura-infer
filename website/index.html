@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura-Infer | Bare-Metal LLM Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="glow-bg"></div>
+    <nav>
+        <div class="logo">Aura-Infer<span>.</span></div>
+        <div class="links">
+            <a href="https://github.com/peter14l/aura-infer" class="btn outline">View Engine on GitHub</a>
+        </div>
+    </nav>
+    <header>
+        <div class="badge">Open Source Rust Engine</div>
+        <h1>Run AI on <span class="gradient">Bare Metal.</span></h1>
+        <p>A hyper-optimized, zero-dependency LLM inference engine written entirely in memory-safe Rust. Bypass Python overhead and run Llama-3 locally with direct memory mapping.</p>
+        <div class="actions">
+            <a href="https://github.com/peter14l/aura-infer" class="btn primary">View Source Code</a>
+            <code>cargo add aura_infer</code>
+        </div>
+    </header>
+    <section class="features">
+        <div class="card">
+            <h3>🧮 Native Tensor Math</h3>
+            <p>O(N²) Matrix Multiplication built from scratch. No PyTorch, no bloated dependencies. Just pure mathematical operations mapped directly to memory.</p>
+        </div>
+        <div class="card">
+            <h3>🧠 Transformer Architecture</h3>
+            <p>Implements Scaled Dot-Product Self-Attention and RMSNorm exactly as used in state-of-the-art models like Llama-3.</p>
+        </div>
+        <div class="card">
+            <h3>⚡ Safetensors mmap</h3>
+            <p>Bypasses RAM bottlenecks by memory-mapping (mmap) .safetensors files directly from the SSD into the inference pipeline.</p>
+        </div>
+    </section>
+</body>
+</html>

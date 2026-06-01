@@ -1,50 +1,53 @@
 use std::fs::File;
-use std::io::{Read, Result, Error, ErrorKind};
+use std::io::Result;
 use crate::tensor::Tensor;
+use safetensors::SafeTensors;
+use memmap2::MmapOptions;
 
-/// A parser for .safetensors or .bin model files.
-/// In a production engine, this would memory-map (mmap) the file instead of reading it into RAM.
-pub struct ModelLoader {
-    filepath: String,
+/// A parser for .safetensors model files.
+/// Uses memory mapping (mmap) to map the file directly into RAM for zero-copy loading.
+pub struct ModelLoader<'a> {
+    mmap: memmap2::Mmap,
+    _marker: std::marker::PhantomData<&'a ()>, // Ties the lifetime of the safetensors to the mmap
 }
 
-impl ModelLoader {
-    pub fn new(filepath: &str) -> Self {
-        ModelLoader {
-            filepath: filepath.to_string(),
-        }
+impl<'a> ModelLoader<'a> {
+    pub fn new(filepath: &str) -> Result<Self> {
+        let file = File::open(filepath)?;
+        // Memory map the file (Zero-copy loading of multi-gigabyte models)
+        let mmap = unsafe { MmapOptions::new().map(&file)? };
+        
+        Ok(ModelLoader {
+            mmap,
+            _marker: std::marker::PhantomData,
+        })
     }
 
-    /// Simulates reading a specific tensor (e.g., "layers.0.attention.wq.weight") from disk.
-    /// Converts raw Little-Endian bytes directly into f32 floating point numbers.
-    pub fn load_tensor(&self, name: &str, expected_shape: Vec<usize>) -> Result<Tensor> {
-        // In a real .safetensors implementation, we would first parse the JSON header 
-        // to find the exact byte offsets for `name`. For this PoC, we will simulate reading
-        // raw bytes if the file exists, or return a dummy tensor if it doesn't.
+    /// Loads a specific tensor from the safetensors file.
+    pub fn load_tensor(&self, name: &str) -> std::result::Result<Tensor, String> {
+        // Parse the header
+        let st = SafeTensors::deserialize(&self.mmap).map_err(|e| format!("Safetensors error: {:?}", e))?;
         
-        let mut file = match File::open(&self.filepath) {
-            Ok(f) => f,
-            Err(_) => {
-                // For demonstration, if no model file exists, return a dummy initialized tensor
-                // so the engine can still run mathematically.
-                return Ok(Tensor::new(vec![0.01; expected_shape.iter().product()], expected_shape));
-            }
-        };
-
-        let num_elements: usize = expected_shape.iter().product();
-        let num_bytes = num_elements * 4; // 4 bytes per f32
+        let tensor_view = st.tensor(name).map_err(|e| format!("Tensor not found: {:?}", e))?;
         
-        let mut buffer = vec![0u8; num_bytes];
-        file.read_exact(&mut buffer)?;
-
-        // Convert raw bytes to f32
+        // Convert shape from usize array to Vec
+        let shape: Vec<usize> = tensor_view.shape().iter().copied().collect();
+        let num_elements = shape.iter().product();
+        let data_bytes = tensor_view.data();
+        
+        // Convert raw bytes to f32 (Assuming Little Endian Float32)
         let mut data = Vec::with_capacity(num_elements);
         for i in 0..num_elements {
             let start = i * 4;
-            let bytes = [buffer[start], buffer[start+1], buffer[start+2], buffer[start+3]];
+            let bytes = [
+                data_bytes[start], 
+                data_bytes[start+1], 
+                data_bytes[start+2], 
+                data_bytes[start+3]
+            ];
             data.push(f32::from_le_bytes(bytes));
         }
 
-        Ok(Tensor::new(data, expected_shape))
+        Ok(Tensor::new(data, shape))
     }
 }
